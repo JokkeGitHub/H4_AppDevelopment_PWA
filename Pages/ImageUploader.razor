@@ -1,4 +1,10 @@
 ﻿@page "/imageuploader"
+@using System
+@using System.IO
+@using Microsoft.Extensions.Logging
+@inject Blazored.LocalStorage.ILocalStorageService localStore
+@inject ILogger<ImageUploader> Logger
+
 @inject HttpClient Http
 
 <PageTitle>Image Uploader</PageTitle>
