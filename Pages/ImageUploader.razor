@@ -28,7 +28,7 @@
     <p>
         <label>
             Upload up to @maxAllowedFiles of up to @maxFileSize bytes by selecting a file or drop it on the button:
-            <InputFile OnChange="@LoadFiles" multiple accept=".jpg,.jpeg,.png" />
+            <InputFile OnChange="@LoadFiles" multiple accept=".jpg,.jpeg,.png,.JPG,.JPEG,.PNG" />
         </label>
     </p>
 
@@ -98,7 +98,7 @@
                 extensionname = Path.GetExtension(file.Name);
 
                 var imagefiletypes = new List<string>() {
-                    ".png",".jpg",".jpeg"
+                    ".png",".jpg",".jpeg", ".PNG", ".JPG", ".JPEG"
                 };
                 if (imagefiletypes.Contains(extensionname))
                 {
