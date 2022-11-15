@@ -7,23 +7,35 @@
 
 <p>This component is for saving turkey images.</p>
 
-@if (forecasts == null)
-{
-    <p><em>Breeding turkeys...</em></p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
+<!--                      UPLOAD TURKEY IMAGES                          -->
+<div class="row-cols-12">
+    <p>
+        <label>
+            Max file size:
+            <input type="number" @bind="maxFileSize" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Max allowed files:
+            <input type="number" @bind="maxAllowedFiles" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Upload up to @maxAllowedFiles of up to @maxFileSize bytes by selecting a file or drop it on the button:
+            <InputFile OnChange="@LoadFiles" multiple accept=".jpg,.jpeg,.png,.JPG,.JPEG,.PNG" />
+        </label>
+    </p>
+
+    @if (isLoading)
+    {
+        <p>Hatching turkey eggs...</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var file in loadedFiles)
             {
                 <tr>
                     <td>@forecast.Date.ToShortDateString()</td>
@@ -36,6 +48,20 @@ else
     </table>
 }
 
+
+</div>
+
+<!--                 UPDATE AND CLEAR LOCAL STORAGE                          -->
+<div>
+    <h1>Your LocalStorage Note</h1>
+
+    <textarea @bind="noteContent" /> <!-- THIS SHOULD BE LOADED FILES -->
+    <br />
+    <button @onclick="UpdateLocalStorage">Save</button>
+    <button @onclick="ClearLocalStorage">Clear</button>
+
+</div>
+
 @code {
     private WeatherForecast[]? forecasts;
 
@@ -44,9 +70,31 @@ else
         forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
     }
 
-    public class WeatherForecast
-    {
-        public DateTime Date { get; set; }
+                    //then you can send the base64 data to the server side and insert it into database.
+
+                    // SAVE IMAGE HERE
+
+                    //show the thumbnails image
+                    isdisplayimage = "block";
+                }
+                else
+                {
+                    isdisplayimage = "none";
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("File: {Filename} Error: {Error}",
+                    file.Name, ex.Message);
+            }
+        }
+        isLoading = false;
+    }
+
+    /*                          UPDATE AND CLEAR LOCAL STORAGE                                       */
+    const string noteKey = "note";
+    string noteContent; // SHOULD BE LOADED FILES
+    string noteContent; // SHOULD BE LOADED FILES
 
         public int TemperatureC { get; set; }
 
