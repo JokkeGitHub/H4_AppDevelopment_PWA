@@ -1,6 +1,6 @@
 {
-  "name": "H4_AppDevelopment_PWA",
-  "short_name": "H4_AppDevelopment_PWA",
+  "name": "The Turkey Conspiracy",
+  "short_name": "TTC",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
