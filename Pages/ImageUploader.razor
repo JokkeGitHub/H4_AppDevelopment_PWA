@@ -9,9 +9,7 @@
 <h3>ImageUploader</h3>
 <p>This component is for saving turkey images.</p>
 
-
-
-<!--                 UPLOAD TURKEY IMAGES                          -->
+<!--                      UPLOAD TURKEY IMAGES                          -->
 <div class="row-cols-12">
     <p>
         <label>
@@ -60,7 +58,6 @@
 
 </div>
 
-
 <!--                 UPDATE AND CLEAR LOCAL STORAGE                          -->
 <div>
     <h1>Your LocalStorage Note</h1>
@@ -71,7 +68,6 @@
     <button @onclick="ClearLocalStorage">Clear</button>
 
 </div>
-
 
 @code {
     /*                          UPLOAD TURKEY IMAGES                                       */
@@ -133,7 +129,6 @@
         }
         isLoading = false;
     }
-
 
     /*                          UPDATE AND CLEAR LOCAL STORAGE                                       */
     const string noteKey = "note";
