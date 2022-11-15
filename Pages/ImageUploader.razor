@@ -5,12 +5,8 @@
 @inject Blazored.LocalStorage.ILocalStorageService localStore
 @inject ILogger<ImageUploader> Logger
 
-@inject HttpClient Http
-
 <PageTitle>Image Uploader</PageTitle>
-
 <h3>ImageUploader</h3>
-
 <p>This component is for saving turkey images.</p>
 
 <!--                      UPLOAD TURKEY IMAGES                          -->
@@ -43,16 +39,21 @@
         <ul>
             @foreach (var file in loadedFiles)
             {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
+                <li>
+                    <ul>
+                        <li>Name: @file.Name</li>
+                        <li>Last modified: @file.LastModified.ToString()</li>
+                        <li>Size (bytes): @file.Size</li>
+                        <li>Content type: @file.ContentType</li>
+                        <li>Extension: @extensionname</li>
+                        <li style="display:@isdisplayimage">
+                            <img alt="" src="@base64data" style="height:100px;width:100px;" />
+                        </li>
+                    </ul>
+                </li>
             }
-        </tbody>
-    </table>
-}
+        </ul>
+    }
 
 
 </div>
@@ -69,12 +70,44 @@
 </div>
 
 @code {
-    private WeatherForecast[]? forecasts;
+    /*                          UPLOAD TURKEY IMAGES                                       */
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 1024 * 15;
+    private int maxAllowedFiles = 3;
+    private bool isLoading;
+    private string extensionname = "default";
+    private string base64data = ""; //you can set a defaut image
+    private string isdisplayimage;
 
-    protected override async Task OnInitializedAsync()
+    //InputFile Change event
+    private async Task LoadFiles(InputFileChangeEventArgs e)
     {
-        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
-    }
+        isLoading = true;
+        loadedFiles.Clear();
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                loadedFiles.Add(file);
+
+                //get the upload file extension.
+                extensionname = Path.GetExtension(file.Name);
+
+                var imagefiletypes = new List<string>() {
+                    ".png",".jpg",".jpeg", ".PNG", ".JPG", ".JPEG"
+                };
+                if (imagefiletypes.Contains(extensionname))
+                {
+
+                    //resize the image and create the thumbnails
+                    var resizedFile = await file.RequestImageFileAsync(file.ContentType, 640, 480); // resize the image file
+                    var buf = new byte[resizedFile.Size]; // allocate a buffer to fill with the file's data
+
+                    using (var stream = resizedFile.OpenReadStream())
+                    {
+                        await stream.ReadAsync(buf); // copy the stream to the buffer
+                    }
+                    base64data = "data:image/png;base64," + Convert.ToBase64String(buf); // convert to a base64 string!!
 
                     //then you can send the base64 data to the server side and insert it into database.
 
@@ -100,12 +133,21 @@
     /*                          UPDATE AND CLEAR LOCAL STORAGE                                       */
     const string noteKey = "note";
     string noteContent; // SHOULD BE LOADED FILES
-    string noteContent; // SHOULD BE LOADED FILES
 
-        public int TemperatureC { get; set; }
+    public async void UpdateLocalStorage()
+    {
+        await localStore.SetItemAsync(noteKey, noteContent); // noteContent = LOADED FILES
+    }
 
-        public string? Summary { get; set; }
+    public async void ClearLocalStorage()
+    {
+        noteContent = "";
+        await localStore.ClearAsync();
+        //await localStore.RemoveItemAsync(key); // This one for removing individual items
+    }
 
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    protected override async Task OnInitializedAsync()
+    {
+        noteContent = await localStore.GetItemAsync<string>(noteKey);
     }
 }
