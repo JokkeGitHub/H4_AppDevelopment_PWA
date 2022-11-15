@@ -1,57 +1,158 @@
 ﻿@page "/imageuploader"
-@inject HttpClient Http
+@using System
+@using System.IO
+@using Microsoft.Extensions.Logging
+@inject Blazored.LocalStorage.ILocalStorageService localStore
+@inject ILogger<ImageUploader> Logger
 
 <PageTitle>Image Uploader</PageTitle>
-
 <h3>ImageUploader</h3>
-
 <p>This component is for saving turkey images.</p>
 
-@if (forecasts == null)
-{
-    <p><em>Breeding turkeys...</em></p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
+
+
+<!--                 UPLOAD TURKEY IMAGES                          -->
+<div class="row-cols-12">
+    <p>
+        <label>
+            Max file size:
+            <input type="number" @bind="maxFileSize" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Max allowed files:
+            <input type="number" @bind="maxAllowedFiles" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Upload up to @maxAllowedFiles of up to @maxFileSize bytes by selecting a file or drop it on the button:
+            <InputFile OnChange="@LoadFiles" multiple accept=".jpg,.jpeg,.png" />
+        </label>
+    </p>
+
+    @if (isLoading)
+    {
+        <p>Hatching turkey eggs...</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var file in loadedFiles)
             {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
+                <li>
+                    <ul>
+                        <li>Name: @file.Name</li>
+                        <li>Last modified: @file.LastModified.ToString()</li>
+                        <li>Size (bytes): @file.Size</li>
+                        <li>Content type: @file.ContentType</li>
+                        <li>Extension: @extensionname</li>
+                        <li style="display:@isdisplayimage">
+                            <img alt="" src="@base64data" style="height:100px;width:100px;" />
+                        </li>
+                    </ul>
+                </li>
             }
-        </tbody>
-    </table>
-}
+        </ul>
+    }
+
+
+</div>
+
+
+<!--                 UPDATE AND CLEAR LOCAL STORAGE                          -->
+<div>
+    <h1>Your LocalStorage Note</h1>
+
+    <textarea @bind="noteContent" /> <!-- THIS SHOULD BE LOADED FILES -->
+    <br />
+    <button @onclick="UpdateLocalStorage">Save</button>
+    <button @onclick="ClearLocalStorage">Clear</button>
+
+</div>
+
 
 @code {
-    private WeatherForecast[]? forecasts;
+    /*                          UPLOAD TURKEY IMAGES                                       */
+    private List<IBrowserFile> loadedFiles = new();
+    private long maxFileSize = 1024 * 15;
+    private int maxAllowedFiles = 3;
+    private bool isLoading;
+    private string extensionname = "default";
+    private string base64data = ""; //you can set a defaut image
+    private string isdisplayimage;
+
+    //InputFile Change event
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        loadedFiles.Clear();
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                loadedFiles.Add(file);
+
+                //get the upload file extension.
+                extensionname = Path.GetExtension(file.Name);
+
+                var imagefiletypes = new List<string>() {
+                    ".png",".jpg",".jpeg"
+                };
+                if (imagefiletypes.Contains(extensionname))
+                {
+
+                    //resize the image and create the thumbnails
+                    var resizedFile = await file.RequestImageFileAsync(file.ContentType, 640, 480); // resize the image file
+                    var buf = new byte[resizedFile.Size]; // allocate a buffer to fill with the file's data
+
+                    using (var stream = resizedFile.OpenReadStream())
+                    {
+                        await stream.ReadAsync(buf); // copy the stream to the buffer
+                    }
+                    base64data = "data:image/png;base64," + Convert.ToBase64String(buf); // convert to a base64 string!!
+
+                    //then you can send the base64 data to the server side and insert it into database.
+
+                    // SAVE IMAGE HERE
+
+                    //show the thumbnails image
+                    isdisplayimage = "block";
+                }
+                else
+                {
+                    isdisplayimage = "none";
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("File: {Filename} Error: {Error}",
+                    file.Name, ex.Message);
+            }
+        }
+        isLoading = false;
+    }
+
+
+    /*                          UPDATE AND CLEAR LOCAL STORAGE                                       */
+    const string noteKey = "note";
+    string noteContent; // SHOULD BE LOADED FILES
+
+    public async void UpdateLocalStorage()
+    {
+        await localStore.SetItemAsync(noteKey, noteContent); // noteContent = LOADED FILES
+    }
+
+    public async void ClearLocalStorage()
+    {
+        noteContent = "";
+        await localStore.ClearAsync();
+        //await localStore.RemoveItemAsync(key); // This one for removing individual items
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
-    }
-
-    public class WeatherForecast
-    {
-        public DateTime Date { get; set; }
-
-        public int TemperatureC { get; set; }
-
-        public string? Summary { get; set; }
-
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        noteContent = await localStore.GetItemAsync<string>(noteKey);
     }
 }
