@@ -6,26 +6,16 @@
 @inject ILogger<ImageUploader> Logger
 
 <PageTitle>Image Uploader</PageTitle>
-<h3>ImageUploader</h3>
-<p>This component is for saving turkey images.</p>
+<tr>
+    <th><h2>Image Uploader</h2></th>
+    <th><p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This component is for uploading and saving turkey images.</p></th>
+</tr>
 
-<!--                      UPLOAD TURKEY IMAGES                          -->
-<div class="row-cols-12">
+<br />
+
+<div>
     <p>
         <label>
-            Max file size:
-            <input type="number" @bind="maxFileSize" />
-        </label>
-    </p>
-    <p>
-        <label>
-            Max allowed files:
-            <input type="number" @bind="maxAllowedFiles" />
-        </label>
-    </p>
-    <p>
-        <label>
-            Upload up to @maxAllowedFiles of up to @maxFileSize bytes by selecting a file or drop it on the button:
             <InputFile OnChange="@LoadFiles" multiple accept=".jpg,.jpeg,.png,.JPG,.JPEG,.PNG" />
         </label>
     </p>
@@ -36,12 +26,13 @@
     }
     else
     {
+        
         <ul>
             @foreach (var file in loadedFiles)
             {
                 <li>
                     <ul>
-                        <li>Name: @file.Name</li>
+                        <li><button @onclick="HideAndUnhideEdit">Edit</button><label id="fileName">Name: @file.Name</label><input hidden="@HideLabel" type="text" @bind-value="@uploadedImage.Name" /><button hidden="@HideLabel" @onclick="(() => ChangeName(uploadedImage))">Confirm</button></li>
                         <li>Last modified: @file.LastModified.ToString()</li>
                         <li>Size (bytes): @file.Size</li>
                         <li>Content type: @file.ContentType</li>
@@ -49,16 +40,25 @@
                         <li style="display:@isdisplayimage">
                             <img alt="" src="@base64data" style="height:100px;width:100px;" />
                         </li>
+                        <button @onclick="(() => AddImageToList(uploadedImage))">Save Image</button>
                     </ul>
                 </li>
             }
         </ul>
+
+        @foreach (var image in uploadedImagesList)
+        {
+            <tr>
+                <td style="display:@isdisplayimage">
+                            <img alt="" src="@image.Base64Data" style="height:100px;width:100px;" /></td>
+                <td>@image.Name </td>
+                <td>@image.Type </td>
+                <td>@image.File </td>
+            </tr>
+        }
     }
-
-
 </div>
 
-<!--                 UPDATE AND CLEAR LOCAL STORAGE                          -->
 <div>
     <h1>Your LocalStorage Note</h1>
 
@@ -66,18 +66,25 @@
     <br />
     <button @onclick="UpdateLocalStorage">Save</button>
     <button @onclick="ClearLocalStorage">Clear</button>
-
 </div>
 
 @code {
-    /*                          UPLOAD TURKEY IMAGES                                       */
     private List<IBrowserFile> loadedFiles = new();
     private long maxFileSize = 1024 * 15;
-    private int maxAllowedFiles = 3;
+    private int maxAllowedFiles = 10;
     private bool isLoading;
     private string extensionname = "default";
     private string base64data = ""; //you can set a defaut image
     private string isdisplayimage;
+    UploadedImage uploadedImage = new UploadedImage();
+    List<UploadedImage> uploadedImagesList = new List<UploadedImage>();
+
+    const string noteKey = "note";
+    string noteContent; // SHOULD BE LOADED FILES
+
+
+    private bool HideLabel { get; set; } = false;
+
 
     //InputFile Change event
     private async Task LoadFiles(InputFileChangeEventArgs e)
@@ -98,7 +105,6 @@
                 };
                 if (imagefiletypes.Contains(extensionname))
                 {
-
                     //resize the image and create the thumbnails
                     var resizedFile = await file.RequestImageFileAsync(file.ContentType, 640, 480); // resize the image file
                     var buf = new byte[resizedFile.Size]; // allocate a buffer to fill with the file's data
@@ -111,8 +117,11 @@
 
                     //then you can send the base64 data to the server side and insert it into database.
 
-                    // SAVE IMAGE HERE
+                    //UploadedImage test = new UploadedImage();
 
+
+                    // UploadedImage newImage = uploadedImage;
+                    //uploadedImagesList.Add(newImage);
                     //show the thumbnails image
                     isdisplayimage = "block";
                 }
@@ -120,19 +129,24 @@
                 {
                     isdisplayimage = "none";
                 };
+
+
             }
             catch (Exception ex)
             {
-                Logger.LogError("File: {Filename} Error: {Error}",
-                    file.Name, ex.Message);
+                Logger.LogError("File: {Filename} Error: {Error}", file.Name, ex.Message);
             }
+
+            // SAVE IMAGE HERE
+            uploadedImage.File = loadedFiles[0];
+            uploadedImage.Type = extensionname;
+            uploadedImage.Base64Data = base64data;
+            uploadedImage.Name = file.Name;
+            uploadedImage.Size = file.Size;
         }
         isLoading = false;
-    }
 
-    /*                          UPDATE AND CLEAR LOCAL STORAGE                                       */
-    const string noteKey = "note";
-    string noteContent; // SHOULD BE LOADED FILES
+    }
 
     public async void UpdateLocalStorage()
     {
@@ -149,5 +163,25 @@
     protected override async Task OnInitializedAsync()
     {
         noteContent = await localStore.GetItemAsync<string>(noteKey);
+        //await localStore.GetItemAsync(List<ImageFile>>("imageKey"));
+    }
+
+    public void HideAndUnhideEdit()
+    {
+        HideLabel = !HideLabel;
+    }
+
+    protected async Task ChangeName(UploadedImage uploadedImage)
+    {
+        uploadedImage.Name = "";
+        HideAndUnhideEdit();
+    }
+
+    protected async Task AddImageToList(UploadedImage uploadedImage)
+    {
+        UploadedImage newImage = new UploadedImage();
+        newImage = uploadedImage;
+        uploadedImagesList.Add(newImage);
+        // Add to grid
     }
 }
